@@ -9,8 +9,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 
 import matplotlib.animation as animation
 
-
-#Função a ser estudada
+#função a ser estudada
 def sphere(x):
     d = x.shape[0]
     sum = 0
@@ -19,21 +18,34 @@ def sphere(x):
 
     return sum
 
-# Límites da função Sphere
+# limites para a função Sphere
 x_max = 10
 x_min = -10
 
-#Declara a variável que vai contar o número de iterações
-it = 1
-itmax = 100
+
+# Graficar a superficie da função sphere
+xx = np.linspace(x_min, x_max, 200)
+yy = np.linspace(x_min, x_max, 200)
+# create grid
+x1, x2 = np.meshgrid(xx, yy)
+
+l = [x1, x2]
+arr = np.array(l)
+
+z = sphere(arr)
+
 
 #Parâmetros do algoritmo PSO
+it = 1
 c1 = 2.05
 c2 = 2.05
 ini_v = 3
+
+itmax = 100
 wmax = 0.9
 wmin = 0.4
 max_v = ini_v / 3
+
 w = wmax - it * (wmax - wmin) / itmax
 
 
@@ -52,6 +64,8 @@ fitness = np.zeros((S, 1))
 # O melhor fitness local visitado pela i-ésima partícula
 Pbest_fitness = 1e10 * np.ones([S, 1])
 
+#Array par armazenar a posição das partículas em cada iteração
+zarray = np.zeros((S, d, itmax))
 
 # Inicialização de x, v e Pbest
 for i in range(S):
@@ -62,17 +76,17 @@ for i in range(S):
 Pbest = np.copy(x)
 
 while (it < itmax):
-  
+
     # Para cada partícula
     for i in range(S):
         # Avalie o fitness da função objetivo
-        fitness[i, 0] = sphere(x[i, :])
+        fitness[i, 0] = rastrigin(x[i, :])
         # Encontra o melhor fitness e a posição
         if fitness[i, 0] < Pbest_fitness[i, 0]:
             Pbest[i, :] = x[i, :]
             Pbest_fitness[i, 0] = fitness[i, 0]
 
-    # Encontra o melhor fitness da população
+            # Encontra o melhor fitness da população
     bestfitness = np.amin(Pbest_fitness)
     result = np.where(Pbest_fitness == np.amin(Pbest_fitness))
     p = result[0]
@@ -100,14 +114,17 @@ while (it < itmax):
 
             # Atualiza a nova posição
             x[i, j] = x[i, j] + v[i, j]
+            zarray[i, j, it] = x[i, j]
 
             # Limita a posição de cada partícula
             # Estabelecendo valor máximo e mínimo da posição
             if x[i, j] > x_max:
                 x[i, j] = x_max
+                zarray[i, j, it] = x_max
 
             if x[i, j] < x_min:
                 x[i, j] = x_min
+                zarray[i, j, it] = x_min
 
     # Calcula o fator de inercia
     w = wmax - it * (wmax - wmin) / itmax
@@ -115,3 +132,45 @@ while (it < itmax):
     it = it + 1
 
     print('Generacion: ' + str(it) + ' - - - Gbest: ' + str(Gbest[0, :]) + ' F(x)= ' + str(bestfitness))
+
+
+#Animação 
+mycmap = plt.get_cmap('gist_earth')
+fps = 10  # frame per sec
+frn = itmax  # frame number of the animation
+
+def create_video():
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cp = ax.contourf(x1, x2, z, 20, cmap=mycmap)
+    
+    def animate(frame_number, zarray, plot):
+        ax.clear()
+        cp = ax.contourf(x1, x2, z, 20, cmap=mycmap)
+        
+        #Representa as partículas do sistema
+        line1 = ax.plot(zarray[:, 0, frame_number], zarray[:, 1, frame_number], 'ro', linewidth=2, markersize=4)
+        
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(x_min, x_max)
+        ax.grid(True)
+        return line1
+
+    ani = FuncAnimation(
+        fig,
+        animate,
+        frn,
+        fargs=(zarray, cp),
+        interval=100,
+        blit=True
+    )
+
+    plt.show()
+
+    return ani
+
+anim = create_video()
+fn = 'plot_surface_animation_funcanimation'
+anim.save(fn+'.mp4',writer='ffmpeg',fps=fps)
+anim.save(fn+'.gif',writer='imagemagick',fps=fps)
